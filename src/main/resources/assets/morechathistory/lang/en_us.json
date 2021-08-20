@@ -1,3 +1,4 @@
 {
+  "text.autoconfig.morechathistory.title": "MoreChatHistory",
   "text.autoconfig.morechathistory.option.maxHistory": "Maximum stored chat history"
 }

@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "red.jackf.morechathistory.mixins",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+  ],
+  "client": [
+    "MixinChatHud"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

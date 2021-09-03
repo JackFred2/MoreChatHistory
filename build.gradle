@@ -1,6 +1,7 @@
 plugins {
     id 'fabric-loom' version '0.9-SNAPSHOT'
     id "com.modrinth.minotaur" version "1.2.1"
+    id 'com.matthewprenger.cursegradle' version '1.4.0'
     id 'maven-publish'
 }
 
@@ -79,6 +80,32 @@ publishing {
     repositories {
         // uncomment to publish to the local maven
         // mavenLocal()
+    }
+}
+
+curseforge {
+    if (project.hasProperty("cf.key")) {
+        apiKey = project.findProperty("cf.key")
+        project {
+            id = "518319"
+            changelog = "Check the GitHub for changes: https://github.com/JackFred2/MoreChatHistory"
+            releaseType = "release"
+
+            addGameVersion "Fabric"
+            addGameVersion "Java 16"
+
+            addGameVersion "1.17"
+            addGameVersion "1.17.1"
+
+            mainArtifact(remapJar) {
+                displayName = "${project.prefix} ${archivesBaseName}-${version}.jar"
+            }
+
+        }
+
+        options {
+            forgeGradleIntegration = false
+        }
     }
 }
 

@@ -3,7 +3,7 @@
   "id": "morechathistory",
   "version": "${version}",
   "name": "MoreChatHistory",
-  "description": "Adds a configurable length to chat history.",
+  "description": "Increases the length of the chat history.",
   "authors": [
     "JackFred"
   ],
@@ -12,20 +12,13 @@
   "icon": "assets/morechathistory/icon.png",
   "environment": "client",
   "entrypoints": {
-    "client": [
-      "red.jackf.morechathistory.MoreChatHistory"
-    ],
-    "modmenu": [
-      "red.jackf.morechathistory.MoreChatHistoryModMenu"
-    ]
   },
   "mixins": [
     "morechathistory.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.11.6",
-    "minecraft": "1.17.x",
-    "cloth-config2": ">=5.0.0"
+    "minecraft": "1.17.x"
   },
   "suggests": {
     "fabric-command-api-v1": "*",

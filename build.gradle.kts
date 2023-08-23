@@ -42,13 +42,6 @@ loom {
             sourceSet(sourceSets["client"])
         }
     }
-
-    runConfigs {
-        configureEach {
-            val path = buildscript.sourceFile?.parentFile?.resolve("log4j2.xml")
-            path?.let { property("log4j2.configurationFile", path.path) }
-        }
-    }
 }
 
 dependencies {

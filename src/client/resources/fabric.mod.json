@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "morechathistory",
   "version": "${version}",
-  "name": "MoreChatHistory",
+  "name": "More Chat History",
   "description": "Increases the length of the chat history.",
   "authors": [
     "JackFred"
@@ -19,7 +19,5 @@
   "depends": {
     "fabricloader": ">=0.11.6",
     "minecraft": ">=1.19.1"
-  },
-  "suggests": {
   }
 }

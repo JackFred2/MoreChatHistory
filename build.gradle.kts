@@ -73,11 +73,12 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
+/*
 tasks.jar {
     from("LICENSE") {
         rename { "${it}_${properties["archivesBaseName"]}"}
     }
-}
+}*/
 
 val lastTagVal = properties["lastTag"]?.toString()
 val newTagVal = properties["newTag"]?.toString()

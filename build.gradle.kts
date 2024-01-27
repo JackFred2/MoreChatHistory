@@ -1,33 +1,52 @@
-@file:Suppress("UnstableApiUsage")
+@file:Suppress("UnstableApiUsage", "RedundantNullableReturnType")
 
 import com.github.breadmoirai.githubreleaseplugin.GithubReleaseTask
 import me.modmuss50.mpp.ReleaseType
 import net.fabricmc.loom.task.RemapJarTask
+import org.ajoberstar.grgit.Grgit
 import red.jackf.GenerateChangelogTask
-import java.net.URI
 
 plugins {
     id("maven-publish")
-    id("fabric-loom") version "1.3-SNAPSHOT"
+    id("fabric-loom") version "1.5-SNAPSHOT"
     id("com.github.breadmoirai.github-release") version "2.4.1"
-    id("org.ajoberstar.grgit") version "5.0.+"
+    id("org.ajoberstar.grgit") version "5.2.1"
     id("me.modmuss50.mod-publish-plugin") version "0.3.3"
 }
 
-group = properties["maven_group"]!!
-        version = properties["mod_version"] ?: "dev"
+val grgit: Grgit? = project.grgit
 
-val modReleaseType = properties["type"]?.toString() ?: "release"
+var canPublish = grgit != null && System.getenv("RELEASE") != null
+
+fun getVersionSuffix(): String {
+    return grgit?.branch?.current()?.name ?: "nogit+${properties["minecraft_version"]}"
+}
+
+group = properties["maven_group"]!!
+
+if (System.getenv().containsKey("NEW_TAG")) {
+    version = System.getenv("NEW_TAG").substring(1)
+} else {
+    val versionStr = "${properties["mod_version"]}+${properties["minecraft_version"]!!}"
+    canPublish = false
+    version = if (grgit != null) {
+        "$versionStr+dev-${grgit.log()[0].abbreviatedId}"
+    } else {
+        "$versionStr+dev-nogit"
+    }
+}
 
 base {
     archivesName.set("${properties["archives_base_name"]}")
 }
 
 repositories {
+    mavenLocal()
+
     // Parchment Mappings
     maven {
         name = "ParchmentMC"
-        url = URI("https://maven.parchmentmc.org")
+        url = uri("https://maven.parchmentmc.org")
         content {
             includeGroup("org.parchmentmc.data")
         }
@@ -80,47 +99,93 @@ tasks.jar {
     }
 }*/
 
-val lastTagVal = properties["lastTag"]?.toString()
-val newTagVal = properties["newTag"]?.toString()
-if (lastTagVal != null && newTagVal != null) {
-    val generateChangelogTask = tasks.register<GenerateChangelogTask>("generateChangelog") {
-        lastTag.set(lastTagVal)
-        newTag.set(newTagVal)
-        githubUrl.set(properties["github_url"]!!.toString())
-        prefixFilters.set(properties["changelog_filter"]!!.toString().split(","))
-    }
-
-    if (System.getenv().containsKey("GITHUB_TOKEN")) {
-        tasks.named<GithubReleaseTask>("githubRelease") {
-            dependsOn(generateChangelogTask)
-
-            authorization.set(System.getenv("GITHUB_TOKEN")?.let { "Bearer $it" })
-            owner.set(properties["github_owner"]!!.toString())
-            repo.set(properties["github_repo"]!!.toString())
-            tagName.set(newTagVal)
-            releaseName.set("${properties["mod_name"]} $newTagVal")
-            targetCommitish.set(grgit.branch.current().name)
-            releaseAssets.from(
-                    tasks["remapJar"].outputs.files,
-                    tasks["remapSourcesJar"].outputs.files,
-            )
-
-            body.set(provider {
-                return@provider generateChangelogTask.get().changelogFile.get().asFile.readText()
-            })
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            from(components["java"]!!)
         }
     }
 
-    tasks.named<DefaultTask>("publishMods") {
-        dependsOn(generateChangelogTask)
+    repositories {
+        // if not in CI we publish to maven local
+        if (!System.getenv().containsKey("CI")) repositories.mavenLocal()
+
+        if (canPublish) {
+            maven {
+                name = "JackFredMaven"
+                url = uri("https://maven.jackf.red/releases/")
+                content {
+                    includeGroupByRegex("red.jackf.*")
+                }
+                credentials {
+                    username = properties["jfmaven.user"]?.toString() ?: System.getenv("JACKFRED_MAVEN_USER")
+                    password = properties["jfmaven.key"]?.toString() ?: System.getenv("JACKFRED_MAVEN_PASS")
+                }
+            }
+        }
+    }
+}
+
+if (canPublish) {
+    val lastTag = if (System.getenv("PREVIOUS_TAG") == "NONE") null else System.getenv("PREVIOUS_TAG")
+    val newTag = "v$version"
+
+    var generateChangelogTask: TaskProvider<GenerateChangelogTask>? = null
+
+    // Changelog Generation
+    if (lastTag != null) {
+        generateChangelogTask = tasks.register<GenerateChangelogTask>("generateChangelog") {
+            this.lastTag.set(lastTag)
+            this.newTag.set(newTag)
+            githubUrl.set(properties["github_url"]!!.toString())
+            prefixFilters.set(properties["changelog_filter"]!!.toString().split(","))
+        }
     }
 
+    val changelogTextProvider = if (generateChangelogTask != null) {
+        provider {
+            generateChangelogTask!!.get().changelogFile.get().asFile.readText()
+        }
+    } else {
+        provider {
+            "No Changelog Generated"
+        }
+    }
+
+    // GitHub Release
+
+    tasks.named<GithubReleaseTask>("githubRelease") {
+        generateChangelogTask?.let { dependsOn(it) }
+
+        authorization = System.getenv("GITHUB_TOKEN")?.let { "Bearer $it" }
+        owner = properties["github_owner"]!!.toString()
+        repo = properties["github_repo"]!!.toString()
+        tagName = newTag
+        releaseName = "${properties["mod_name"]} $newTag"
+        targetCommitish = grgit!!.branch.current().name
+        releaseAssets.from(
+            tasks["remapJar"].outputs.files,
+            tasks["remapSourcesJar"].outputs.files,
+        )
+        subprojects.forEach {
+            releaseAssets.from(
+                it.tasks["remapJar"].outputs.files,
+                it.tasks["remapSourcesJar"].outputs.files,
+            )
+        }
+
+        body = changelogTextProvider
+    }
+
+    // Mod Platforms
     if (listOf("CURSEFORGE_TOKEN", "MODRINTH_TOKEN").any { System.getenv().containsKey(it) }) {
         publishMods {
-            changelog.set(provider {
-                return@provider generateChangelogTask.get().changelogFile.get().asFile.readText()
+            changelog.set(changelogTextProvider)
+            type.set(when(properties["release_type"]) {
+                "release" -> ReleaseType.STABLE
+                "beta" -> ReleaseType.BETA
+                else -> ReleaseType.ALPHA
             })
-            type.set(ReleaseType.STABLE)
             modLoaders.add("fabric")
             modLoaders.add("quilt")
             file.set(tasks.named<RemapJarTask>("remapJar").get().archiveFile)
@@ -146,15 +211,6 @@ if (lastTagVal != null && newTagVal != null) {
                     displayName.set("${properties["mod_name"]!!} ${version.get()}")
                 }
             }
-        }
-    }
-}
-
-// configure the maven publication
-publishing {
-    publications {
-        create<MavenPublication>("mavenJava") {
-            from(components["java"]!!)
         }
     }
 }

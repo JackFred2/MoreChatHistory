@@ -134,11 +134,14 @@ if (canPublish) {
 
     // Changelog Generation
     if (lastTag != null) {
+        val changelogHeader = properties["changelogHeaderAddon"]?.toString()
+
         generateChangelogTask = tasks.register<GenerateChangelogTask>("generateChangelog") {
             this.lastTag.set(lastTag)
             this.newTag.set(newTag)
             githubUrl.set(properties["github_url"]!!.toString())
             prefixFilters.set(properties["changelog_filter"]!!.toString().split(","))
+            changelogHeader?.let { prologue.set(changelogHeader) }
         }
     }
 

@@ -112,12 +112,13 @@ jobs:
           fi        
 
       # new tag parsing and concat
-      # vX.Y.Z -> vX.Y.Z+1.20.4
+      # vX.Y.Z -> vX.Y.Z since this is mostly multi-version
       - id: new-tag-generator
         name: Format new tag from input and branch
         run: |
-          branch=$(git rev-parse --abbrev-ref HEAD)
-          newTag=${{ steps.pull-new-version.outputs.new_tag }}+$branch
+          # branch=$(git rev-parse --abbrev-ref HEAD)
+          # newTag=${{ steps.pull-new-version.outputs.new_tag }}+$branch
+          newTag=${{ steps.pull-new-version.outputs.new_tag }}
           echo "NEW_TAG=$newTag" >> "$GITHUB_ENV"
           echo "NEW_TAG=$newTag" >> "$GITHUB_OUTPUT"
 

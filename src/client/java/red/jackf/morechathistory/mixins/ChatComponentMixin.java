@@ -1,18 +1,18 @@
 package red.jackf.morechathistory.mixins;
 
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.minecraft.client.gui.components.ChatComponent;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.Constant;
-import org.spongepowered.asm.mixin.injection.ModifyConstant;
+import org.spongepowered.asm.mixin.injection.At;
 
 @Mixin(ChatComponent.class)
 public class ChatComponentMixin {
 
-    // todo move to mixin extras ModifyExpressionValue when it's likely most have changed to floader 0.15
-    @ModifyConstant(method = "addMessage(Lnet/minecraft/network/chat/Component;Lnet/minecraft/network/chat/MessageSignature;ILnet/minecraft/client/GuiMessageTag;Z)V",
-            constant = @Constant(intValue = 100),
-            expect = 2)
+    @ModifyExpressionValue(
+            method = {"addMessageToDisplayQueue", "addMessageToQueue", "addRecentChat"},
+            at = @At(value = "CONSTANT", args = "intValue=100")
+    )
     public int morechathistory_changeMaxHistory(int original) {
-        return 16384;
+        return original + 16284;
     }
 }
